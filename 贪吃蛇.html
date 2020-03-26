@@ -1,0 +1,235 @@
+<!doctype html>
+<html>
+
+	<head>
+		<meta charset="utf-8">
+		<title></title>
+		<meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,user-scalable=no" />
+		<link href="css/mui.css" rel="stylesheet" />
+		<style>
+			.map{
+				width: 800px;
+				height: 600px;
+				background-color: #999999;
+				position: absolute;
+			}
+		</style>
+	</head>
+
+	<body>
+		<div class="map">
+			
+		</div>
+		<script type="text/javascript">
+			//自调用函数,食物
+			(function(){
+				var element=[];
+				//食物的构造函数:宽,高,背景颜色,坐标位置,食物自己(既然是一个对象了，自己生成div更符合吧，在页面上定义也可以)
+				function Food(x, y, width, height, color){
+					this.width = width||20;
+					this.height = height||20;
+					this.x= x||0;
+					this.y = y||0;
+					this.color = color||"green";
+				}
+				//食物初始化
+				Food.prototype.init = function(map){
+					remove();
+					var div = document.createElement("div");
+					map.appendChild(div);
+					element.push(div);
+					div.style.position = "absolute";
+					div.style.height = this.height+"px";
+					div.style.width = this.width+"px";
+					div.style.backgroundColor = this.color;
+					this.x = parseInt(Math.random()*(map.offsetWidth/this.width))*this.width;
+					this.y = parseInt(Math.random()*(map.offsetHeight/this.height))*this.height;
+					div.style.left = this.x +"px";
+					div.style.top = this.y+"px";
+				}
+				//定义私有函数:删除
+				function remove(){
+					for (var i = 0; i < element.length; i++) {
+						var ele = element[i];
+						ele.parentNode.removeChild(ele);
+						element.splice(i,1);//从i开始,删除一个.
+					}
+				}
+				window.Food =Food;
+			})();
+			
+			//小蛇---
+			(function(){
+				var element = [];
+				//小蛇构造函数
+				function Snake(width,height,direction){
+					this.width = width||20;
+					this.height = height||20;
+					this.direction = direction||"right";
+					this.body = [
+						{x:3,y:2,color:"red"},
+						{x:2,y:2,color:"yellow"},
+						{x:1,y:2,color:"yellow"}
+					];
+				}
+				//小蛇初始化
+				Snake.prototype.init = function(map){
+					removeS();
+					for (var i = 0; i < this.body.length; i++) {
+						var obj = this.body[i];
+						var div = document.createElement("div");
+						map.appendChild(div);
+						div.style.position = "absolute";
+						div.style.width = this.width+"px";
+						div.style.height = this.height+"px";
+						div.style.left = obj.x*this.width +"px";
+						div.style.top  = obj.y*this.height+"px";
+						div.style.backgroundColor = obj.color;
+						element.push(div);
+					}
+				};
+				//小蛇动起来
+				Snake.prototype.move = function(food,map){
+					var i = this.body.length-1;
+					for(;i>0;i--){
+						this.body[i].x = this.body[i-1].x;
+						this.body[i].y = this.body[i-1].y;
+					}
+					//移动头部
+					switch(this.direction){						
+						case "right":
+							this.body[0].x  +=1;
+							break;
+						case "left":
+							this.body[0].x  -=1;
+							break;
+						case "bottom":
+							this.body[0].y  +=1;
+							break;
+						case "top":
+							this.body[0].y  -=1;
+							break;
+					}
+					//判断小蛇头部坐标是否与食物重合,重合则吃掉
+					var headX = this.body[0].x*this.width;
+					var headY = this.body[0].y*this.height;
+					if(headX==food.x&&headY==food.y){
+						
+						var last = this.body[this.body.length-1];
+						this.body.push({
+							x:last.x,
+							y:last.y,
+							color:last.color
+						});
+						food.init(map);
+					}
+				}
+				//删除旧小蛇
+				function removeS(){
+					var i = element.length-1;
+					for (; i >=0; i--) {
+						var ele = element[i];
+						ele.parentNode.removeChild(ele);
+						element.splice(i,1);
+					}
+				}
+				window.Snake = Snake;
+			}());
+						
+			//游戏
+			(function(){
+				function Game(map){
+					this.food = new Food();
+					this.snake = new Snake();
+					this.map = map;
+					that = this;//下面的that有冲突,定时器的顶级调用对象是window.
+				}
+				//Game的初始化
+				Game.prototype.init = function(){
+					this.food.init(this.map);
+					this.snake.init(this.map);
+					//让他移动
+					this.runSnake(this.map,this.snake);
+					//调用keydown事件
+					this.bindkey();
+				}
+				//校舍移动时间
+				Game.prototype.runSnake = function(){
+					var timeId = setInterval(function(){
+						this.snake.init(this.map);
+						this.snake.move(this.food,this.map);
+						var maxX = this.map.offsetWidth / this.snake.width;
+						//纵坐标的最大值
+						var maxY = this.map.offsetHeight / this.snake.height;
+						//小蛇的头的坐标
+						var headX = this.snake.body[0].x;
+						var headY = this.snake.body[0].y;
+						//横坐标
+						if (headX < 0 || headX > maxX) {
+						  //撞墙了,停止定时器
+						  clearInterval(timeId);
+						  alert("游戏结束");
+						}
+						//纵坐标
+						if (headY < 0 || headY > maxY) {
+						  //撞墙了,停止定时器
+						  clearInterval(timeId);
+						  alert("游戏结束");
+						}
+					}.bind(that),150);
+					
+					
+				}
+				//为小蛇移动注册键盘事件
+				Game.prototype.bindkey = function(){
+					document.addEventListener("keydown",function(e){
+						switch (e.keyCode){
+							case 37:
+								this.snake.direction = "left";
+								break;
+							case 38:
+								this.snake.direction = "top";
+								break;
+							case 39:
+								this.snake.direction = "right";
+								break;
+							case 40:
+								this.snake.direction = "bottom";
+								break;
+						}
+					}.bind(that),false);
+				}
+				var game = new Game(document.querySelector(".map"));
+				game.init();
+			}());
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			/* 测试：必须五个参数，这样才能对应上参数位置，如果只穿3个，则颜色会对应height，会不显示，
+			不加颜色参数，构造函数取默认值是可以的
+			var fd = new Food(0,0,80,60,"red");
+			fd.init(document.querySelector(".map"));
+			var fd = new Food(80,60);
+			fd.init(document.querySelector(".map")); */
+			
+		
+			
+		</script>	
+	</body>
+		
+	
+
+</html>
